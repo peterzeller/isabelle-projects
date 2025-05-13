@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>title</title>
+  </head>
+  <body>
+    <strong class="keyword1"> section </strong> "Rule Application"<br/>
+<br/>
+<strong class="keyword1"> theory </strong> rule_application<br/>
+  <strong class="keyword2"> imports </strong> Main<br/>
+<strong class="keyword2"> begin </strong><br/>
+<br/>
+<br/>
+<strong class="keyword1"> text </strong> ‹<br/>
+One of the basic concepts in Isabelle is rule application.<br/>
+A rule consists of a list of premises and a conclusion.<br/>
+<br/>
+For example consider the rule thm[source] finite_UnI: <br/>
+<br/>
+thm finite_UnI<br/>
+<br/>
+This rule has two premises: term  must be finite and term  must be finite.<br/>
+The conclusion is that the union  term ‹ ∪ › is also finite.<br/>
+<br/>
+The variables starting with a question mark denote schematic variables, which we can replace with arbitrary terms of the correct type.<br/>
+For example we can use term ‹{,,}› for term  and term ‹{,}› for term  using the syntax <br/>
+<br/>
+thm[source] finite_UnI[where F=‹{,,}›  G=‹{,}›]<br/>
+<br/>
+and get a specialized version of the rule:<br/>
+<br/>
+thm finite_UnI[where F=‹{,,}›  G=‹{,}›]<br/>
+<br/>
+When applying a rule, the conclusion is matched against the current goal.<br/>
+If it matches,  the goal is replaced by the premises of the rule.<br/>
+As an example consider the following Lemma:<br/>
+›<br/>
+<br/>
+<strong class="keyword1"> lemma </strong> rule_application_example_1:<br/>
+  <strong class="keyword2"> shows </strong> ‹ ({,,} ∪ {,})›<br/>
+<strong class="keyword1"> proof </strong> (rule finite_UnI[<strong class="keyword2"> where </strong> F=‹{,,}› <strong class="keyword2">
+  
+</strong> G=‹{,}›])<br/>
+<br/>
+  <strong class="keyword1"> text </strong> ‹After starting the proof with this rule, we are left with the following 2 subgoals:<br/>
+<br/>
+ subgoals<br/>
+<br/>
+We can then use ❙‹show› to start a proof for these subgoals:<br/>
+›<br/>
+<br/>
+   ‹ {, , }›<br/>
+  <strong class="keyword1"> proof </strong> (rule finite.insertI[<strong class="keyword2"> where </strong> a= <strong class="keyword2">
+  
+</strong> A=‹{, }›])<br/>
+     ‹ {, }›<br/>
+    <strong class="keyword1"> proof </strong> (rule finite.insertI[<strong class="keyword2"> where </strong> a= <strong class="keyword2">
+  
+</strong> A=‹{}›])<br/>
+       ‹ {}›<br/>
+      <strong class="keyword1"> proof </strong> (rule finite.insertI[<strong class="keyword2"> where </strong> a= <strong class="keyword2">
+  
+</strong> A=‹{}›])<br/>
+         ‹ {}›<br/>
+        <strong class="keyword1"> proof </strong> (rule finite.emptyI)<br/>
+        <strong class="keyword1"> qed </strong><br/>
+      <strong class="keyword1"> qed </strong><br/>
+    <strong class="keyword1"> qed </strong><br/>
+  <strong class="keyword1"> qed </strong><br/>
+<br/>
+   ‹ {, }›<br/>
+  <strong class="keyword1"> proof </strong> (rule finite.insertI[<strong class="keyword2"> where </strong> a= <strong class="keyword2">
+  
+</strong> A=‹{}›])<br/>
+     ‹ {}›<br/>
+    <strong class="keyword1"> proof </strong> (rule finite.insertI[<strong class="keyword2"> where </strong> a= <strong class="keyword2">
+  
+</strong> A=‹{}›])<br/>
+       ‹ {}›<br/>
+      <strong class="keyword1"> proof </strong> (rule finite.emptyI)<br/>
+      <strong class="keyword1"> qed </strong><br/>
+    <strong class="keyword1"> qed </strong><br/>
+  <strong class="keyword1"> qed </strong><br/>
+<strong class="keyword1"> qed </strong><br/>
+<br/>
+<strong class="keyword1"> text </strong> ‹<br/>
+<p> In the proofs for the subgoals used two other rules: </p><br/>
+<br/>
+<ul>
+  <li>  ▪ <p> thm[source] finite.insertI: thm finite.insertI </p> </li><br/>
+  <li>  ▪ <p> thm[source] finite.emptyI: thm finite.emptyI </p> </li>
+</ul><br/>
+<br/>
+<br/>
+<p>
+  Note that the notation term ‹{,,}› is just a nicer syntax for calls to the term  function and the unsugared form would be term[show_abbrevs=false] ‹  (  (  {}))›.
+</p><br/>
+<br/>
+<br/>
+›<br/>
+<br/>
+<strong class="keyword1"> subsection </strong> "Cutting down on Syntax"<br/>
+<br/>
+<strong class="keyword1"> text </strong> ‹The proof above is probably the most verbose and explicit way it can be formulated in Isabelle.›<br/>
+<br/>
+<strong class="keyword1"> subsubsection </strong> "Matching Variables"<br/>
+<br/>
+<strong class="keyword1"> text </strong> ‹First of all, Isabelle can often figure out the values for schematic variables in rules by matching the conclusion and the goal.<br/>
+So we can simply omit the ❙‹where› attribute in the proofs:›<br/>
+<br/>
+<strong class="keyword1"> lemma </strong> rule_application_example_2:<br/>
+  <strong class="keyword2"> shows </strong> ‹ ({,,} ∪ {,})›<br/>
+<strong class="keyword1"> proof </strong> (rule finite_UnI)<br/>
+<br/>
+   ‹ {, , }›<br/>
+  <strong class="keyword1"> proof </strong> (rule finite.insertI)<br/>
+     ‹ {, }›<br/>
+    <strong class="keyword1"> proof </strong> (rule finite.insertI)<br/>
+       ‹ {}›<br/>
+      <strong class="keyword1"> proof </strong> (rule finite.insertI)<br/>
+         ‹ {}›<br/>
+        <strong class="keyword1"> proof </strong> (rule finite.emptyI)<br/>
+        <strong class="keyword1"> qed </strong><br/>
+      <strong class="keyword1"> qed </strong><br/>
+    <strong class="keyword1"> qed </strong><br/>
+  <strong class="keyword1"> qed </strong><br/>
+<br/>
+   ‹ {, }›<br/>
+  <strong class="keyword1"> proof </strong> (rule finite.insertI)<br/>
+     ‹ {}›<br/>
+    <strong class="keyword1"> proof </strong> (rule finite.insertI)<br/>
+       ‹ {}›<br/>
+      <strong class="keyword1"> proof </strong> (rule finite.emptyI)<br/>
+      <strong class="keyword1"> qed </strong><br/>
+    <strong class="keyword1"> qed </strong><br/>
+  <strong class="keyword1"> qed </strong><br/>
+<strong class="keyword1"> qed </strong><br/>
+<br/>
+<strong class="keyword1"> text </strong> ‹When functions are involved, matching can become a bit more complicated.<br/>
+For more details see Section ref{unification}.›<br/>
+<br/>
+<strong class="keyword1"> subsubsection </strong> "Direct proofs with by"<br/>
+<br/>
+<strong class="keyword1"> text </strong> ‹When a proof can be completed with a single step, it can be abbreviated using ❙‹by›. <br/>
+Instead of ``❙‹proof› X ❙‹qed›'' we can just write ``❙‹by› X'': ›<br/>
+<br/>
+<strong class="keyword1"> lemma </strong> rule_application_example_3:<br/>
+  <strong class="keyword2"> shows </strong> ‹ ({,,} ∪ {,})›<br/>
+<strong class="keyword1"> proof </strong> (rule finite_UnI)<br/>
+<br/>
+   ‹ {, , }›<br/>
+  <strong class="keyword1"> proof </strong> (rule finite.insertI)<br/>
+     ‹ {, }›<br/>
+    <strong class="keyword1"> proof </strong> (rule finite.insertI)<br/>
+       ‹ {}›<br/>
+      <strong class="keyword1"> proof </strong> (rule finite.insertI)<br/>
+         ‹ {}›<br/>
+          <strong class="keyword1"> by </strong> (rule finite.emptyI)<br/>
+      <strong class="keyword1"> qed </strong><br/>
+    <strong class="keyword1"> qed </strong><br/>
+  <strong class="keyword1"> qed </strong><br/>
+<br/>
+   ‹ {, }›<br/>
+  <strong class="keyword1"> proof </strong> (rule finite.insertI)<br/>
+     ‹ {}›<br/>
+    <strong class="keyword1"> proof </strong> (rule finite.insertI)<br/>
+       ‹ {}›<br/>
+        <strong class="keyword1"> by </strong> (rule finite.emptyI)<br/>
+    <strong class="keyword1"> qed </strong><br/>
+  <strong class="keyword1"> qed </strong><br/>
+<strong class="keyword1"> qed </strong><br/>
+<br/>
+<strong class="keyword1"> subsection </strong> "Apply Style Proofs"<br/>
+<br/>
+<strong class="keyword1"> text </strong> ‹For exploration and for short proofs it can be tedious to write down all subgoals explicitly using ❙‹show›. <br/>
+We can avoid this by starting the proof with ❙‹apply› instead of ❙‹proof›.<br/>
+This will just transform the current proof state and we can directly continue on this state with other calls to ❙‹apply› or by starting a structured ❙‹proof›:<br/>
+›<br/>
+<br/>
+<strong class="keyword1"> lemma </strong> rule_application_example_4:<br/>
+  <strong class="keyword2"> shows </strong> ‹ ({,,} ∪ {,})›<br/>
+  <strong class="keyword1">  </strong> (rule finite_UnI)<br/>
+  <strong class="keyword1"> text </strong> ‹Proof state is now: subgoals›<br/>
+   <br/>
+  <strong class="keyword1"> text </strong> ‹Proof state is now: subgoals›<br/>
+   <br/>
+  <strong class="keyword1"> text </strong> ‹Proof state is now: subgoals›<br/>
+   <br/>
+  <strong class="keyword1"> text </strong> ‹Proof state is now: subgoals›<br/>
+   <br/>
+  <strong class="keyword1"> text </strong> ‹Proof state is now: subgoals›<br/>
+  <strong class="keyword1">  </strong> (rule finite.insertI)<br/>
+  <strong class="keyword1"> text </strong> ‹Proof state is now: subgoals›<br/>
+  <strong class="keyword1">  </strong> (rule finite.insertI)<br/>
+  <strong class="keyword1"> text </strong> ‹Proof state is now: subgoals›<br/>
+  <strong class="keyword1">  </strong> (rule finite.emptyI)<br/>
+  <strong class="keyword1"> text </strong> ‹We have no more subgoals and can complete the proof with ❙‹done›:›<br/>
+  <strong class="keyword1">  </strong><br/>
+<br/>
+<strong class="keyword1"> text </strong> ‹Note that this style of proof can be hard to follow by just reading the proof text since the proof text contains no information about the intermediate steps. ›<br/>
+<br/>
+<strong class="keyword1"> lemma </strong> rule_application_example_5:<br/>
+  <strong class="keyword2"> shows </strong> ‹ ({,,} ∪ {,})›<br/>
+  <strong class="keyword1">  </strong> (rule finite_UnI)<br/>
+   <br/>
+   <br/>
+   <br/>
+   <br/>
+  <strong class="keyword1">  </strong> (rule finite.insertI)<br/>
+  <strong class="keyword1">  </strong> (rule finite.insertI)<br/>
+  <strong class="keyword1">  </strong> (rule finite.emptyI)<br/>
+  <strong class="keyword1">  </strong><br/>
+<br/>
+<strong class="keyword1"> subsection </strong> "Combining Methods"<br/>
+<br/>
+<strong class="keyword1"> text </strong> ‹The proof above contains several repeated lines.<br/>
+We can add a plus to a proof method to repeat it as often as it is applicable:›<br/>
+<br/>
+<strong class="keyword1"> lemma </strong> rule_application_example_6:<br/>
+  <strong class="keyword2"> shows </strong> ‹ ({,,} ∪ {,})›<br/>
+  <strong class="keyword1">  </strong> (rule finite_UnI)<br/>
+   <br/>
+   <br/>
+  <strong class="keyword1">  </strong> (rule finite.insertI)<br/>
+  <strong class="keyword1">  </strong> (rule finite.emptyI)<br/>
+  <strong class="keyword1">  </strong><br/>
+<br/>
+<strong class="keyword1"> text </strong> ‹Since the ❙‹rule› method accepts several rules (which will be tried from left to right), we can the combine the proof to a single line:›<br/>
+<br/>
+<strong class="keyword1"> lemma </strong> rule_application_example_7:<br/>
+  <strong class="keyword2"> shows </strong> ‹ ({,,} ∪ {,})›<br/>
+  <strong class="keyword1"> by </strong> (rule finite_UnI finite.insertI finite.emptyI)<br/>
+<br/>
+<br/>
+<br/>
+<strong class="keyword2">  </strong>
+  </body>
+</html>
