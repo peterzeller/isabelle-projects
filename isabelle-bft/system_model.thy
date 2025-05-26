@@ -30,7 +30,7 @@ text \<open>An actor can perform multiple actions in one step which are describe
 type_synonym client_response = \<open>(client \<times> message)\<close>
 
 record action =
-  client_response :: \<open> client_response option\<close>
+  client_response :: \<open> client_response list\<close>
   network_messages :: \<open>(node \<times> message) set\<close>
   new_state :: \<open>node_state\<close>
 
@@ -38,13 +38,23 @@ find_consts \<open>'a option \<Rightarrow> 'a set\<close>
 
 definition 
 \<open>messages_action a \<equiv> 
-  snd ` set_option (client_response a)
+  snd ` set (client_response a)
   \<union> snd ` network_messages a
   \<union> {new_state a}\<close>
 
 definition signed_messages_action where
 \<open>signed_messages_action a \<equiv>
   \<Union>(signed_messages ` messages_action a)\<close>
+
+
+
+datatype in_or_out = In | Out
+
+text \<open>A client action captures the interaction between a node and a client.
+It can be an incoming message from a client or an outgoing message towards a client.\<close>
+datatype client_action =
+  Caction (client_action_node: node) (client_action_client: client) (client_action_kind: in_or_out) 
+    (client_action_message: message)
 
 
 record system_state = 
@@ -54,6 +64,7 @@ record system_state =
 \<comment> \<open>network consists of set of triples: sender \<times> recipient \<times> message\<close>
   network :: \<open>(node \<times> (node \<times> message)) set\<close>
   known_signatures :: \<open>node \<rightharpoonup> ((node \<times> message) set)\<close>
+  trace :: \<open>client_action list\<close>
 
 
 record algorithm =
@@ -90,78 +101,67 @@ definition
 
 
 
-datatype in_or_out = In | Out
-
-datatype client_action =
-  Caction node client in_or_out message
-
-definition 
+definition  execute_action ::\<open>client_action list \<Rightarrow> system_state \<Rightarrow> node \<Rightarrow> action \<Rightarrow> system_state\<close> where
 \<open>execute_action client_actions S n a \<equiv> 
-(client_actions @ map (\<lambda>(c,m). Caction n c Out m) (option_to_list (client_response a)),
+
   S\<lparr>
     node_state := (node_state S)(n \<mapsto> new_state a),
-    network := {n} \<times> network_messages a
- \<rparr>)\<close>
+    network := {n} \<times> network_messages a,
+    trace := trace S @ client_actions @ map (\<lambda>(c,m). Caction n c Out m) (client_response a)
+ \<rparr>\<close>
 
-definition execute_step :: \<open>algorithm \<Rightarrow> system_state \<Rightarrow> step \<Rightarrow> client_action list \<times> system_state\<close> where
+definition execute_step :: \<open>algorithm \<Rightarrow> system_state \<Rightarrow> step \<Rightarrow> system_state\<close> where
 \<open>execute_step A S step \<equiv> case step of
   ReceiveClientMessage c n msg \<Rightarrow> 
     (case node_state S n of
-        None \<Rightarrow> ([], S)
+        None \<Rightarrow> S
       | Some ns \<Rightarrow>
           let a = process_client_message A ns c msg  in
           execute_action [Caction n c In msg]  S n a)
 | ReceiveInternal sender recipient msg \<Rightarrow>
   if (sender, recipient, msg) \<in> network S then
     (case node_state S recipient of
-        None \<Rightarrow> ([], S)
+        None \<Rightarrow> S
       | Some ns \<Rightarrow>
     let a = process_network_message A ns sender msg in
     execute_action [] S recipient a)
   else
-    ([], S)
+    S
 | BadReceiveClientMessage sender n msg a \<Rightarrow> 
 (case node_state S n of
-        None \<Rightarrow> ([], S)
+        None \<Rightarrow> S
       | Some ns \<Rightarrow>
   (if n \<in> failed_nodes S 
     \<and> signed_messages_action a \<subseteq> signed_messages ns \<union> signed_messages msg then 
     execute_action [Caction n sender In msg] S n a 
-  else ([], S)))
+  else S))
 | BadReceiveInternal sender n msg a \<Rightarrow> 
 (case node_state S n of
-        None \<Rightarrow> ([], S)
+        None \<Rightarrow> S
       | Some ns \<Rightarrow>
   (if n \<in> failed_nodes S 
     \<and> signed_messages_action a \<subseteq> signed_messages ns \<union> signed_messages msg then 
     execute_action [] S n a 
-  else ([], S)))\<close>
+  else S))\<close>
 
-fun execute_steps where
-  \<open>execute_steps A S Nil = []\<close>
-| \<open>execute_steps A S (step#steps) =
-  (let (r, S') = execute_step A S step in
-  r@execute_steps A S' steps) \<close>
+definition
+\<open>execute_steps A S steps \<equiv> foldl (execute_step A) S steps\<close>
 
 text \<open>We need to define the initial state\<close>
 
+definition initial_state :: \<open>algorithm \<Rightarrow> node list \<Rightarrow> node set \<Rightarrow> system_state\<close> where
+\<open>initial_state A all_nodes f_nodes \<equiv> \<lparr>
+  node_state=(\<lambda>n. if n \<in> set all_nodes then Some (init_state A n all_nodes) else None),
+  failed_nodes=f_nodes \<inter> set all_nodes,
+  network={},
+  known_signatures=(\<lambda>n. if n \<in> set all_nodes then Some {} else None),
+  trace=[]
+\<rparr>\<close>
 
-text \<open>We now define what it means for an algorithm to solve the consensus problem:
+definition
+\<open>reachable_states A all_nodes f_nodes \<equiv> {execute_steps A (initial_state A all_nodes f_nodes) tr | tr. True }\<close>
 
-Safety: It sends the same message to all clients,
-the message must have been proposed by one client.
 
-Final Check:
-All clients who sent a request to a non-faulty node got a response.
 
-Lifeness: Once all internal messages from non-faulty nodes have been processed and there was 
-at least one client message proposal to a non-faulty node, then the final check should hold.
-Moreover, there is a maximum of messages generated by non-faulty nodes.
-
-Together these conditions ensure liveness, without having to talk about infinite executions.
-\<close>
-
-definition 
-\<open>safety_same_response\<close>
 
 end
